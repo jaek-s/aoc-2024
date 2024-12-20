@@ -11,7 +11,7 @@ import (
 
 func main() {
 	log.Println("Example distance:", getDistanceFromFile("./example.txt"))
-	log.Println("Input1 distance:", getDistanceFromFile("./input1.txt"))
+	log.Println("Input1 distance:", getDistanceFromFile("./input.txt"))
 }
 
 func getDistanceFromFile(filename string) int {
