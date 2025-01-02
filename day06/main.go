@@ -192,12 +192,18 @@ func solveSecondPuzzle(filepath string) int {
 	var loopLocationCount int
 	for m.isCoordOnMap(m.guardPos) {
 		nextPos := m.getNextGuardPos()
+		if m.isCoordOnMap(nextPos) {
+			startingDir := m.guardDir
+			for m.obstacles[nextPos.x][nextPos.y] {
+				m.rotateGuard()
+				nextPos = m.getNextGuardPos()
+			}
 
-		if m.isCoordOnMap(nextPos) &&
-			!m.obstacles[nextPos.x][nextPos.y] &&
-			m.willNewObstacleLoopGuard(nextPos) {
+			if m.willNewObstacleLoopGuard(nextPos) {
+				loopLocationCount++
+			}
 
-			loopLocationCount++
+			m.guardDir = startingDir
 		}
 
 		m.moveGuard()
