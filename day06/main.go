@@ -4,12 +4,14 @@ import (
 	"bufio"
 	"log"
 	"os"
+	"slices"
 )
 
 func main() {
 	log.Println("Puzzle 1 example output:", solveFirstPuzzle("./example.txt"))
 	log.Println("Puzzle 1 real output:", solveFirstPuzzle("./input.txt"))
 	log.Println("Puzzle 2 example output:", solveSecondPuzzle("./example.txt"))
+	log.Println("Puzzle 2 real output:", solveSecondPuzzle("./input.txt"))
 }
 
 func checkErr(err error) {
@@ -81,7 +83,7 @@ func newGuardMap(filepath string) guardMap {
 			}
 		}
 
-		y += 1
+		y++
 	}
 
 	return guardMap
@@ -90,19 +92,13 @@ func newGuardMap(filepath string) guardMap {
 func (m *guardMap) moveGuard() {
 	nextPos := m.getNextGuardPos()
 
-	if nextPos.x >= 0 &&
-		nextPos.x < m.width &&
-		nextPos.y >= 0 &&
-		nextPos.y < m.height &&
-		m.obstacles[nextPos.x][nextPos.y] {
-
+	if m.isCoordOnMap(nextPos) && m.obstacles[nextPos.x][nextPos.y] {
 		m.rotateGuard()
 		m.moveGuard()
 		return
 	}
 
 	m.guardPos = nextPos
-	m.visitedLocations[m.guardPos] = true
 }
 
 func (m *guardMap) rotateGuard() {
@@ -130,54 +126,82 @@ func (m guardMap) getNextGuardPos() coord {
 	newPos := m.guardPos
 
 	if m.guardDir == 'N' {
-		newPos.y -= 1
+		newPos.y--
 	}
 
 	if m.guardDir == 'E' {
-		newPos.x += 1
+		newPos.x++
 	}
 
 	if m.guardDir == 'S' {
-		newPos.y += 1
+		newPos.y++
 	}
 
 	if m.guardDir == 'W' {
-		newPos.x -= 1
+		newPos.x--
 	}
 
 	return newPos
 }
 
+func (m guardMap) isCoordOnMap(c coord) bool {
+	return c.x >= 0 &&
+		c.x < m.width &&
+		c.y >= 0 &&
+		c.y < m.height
+}
+
 func (m guardMap) willNewObstacleLoopGuard(newObstacleLocation coord) bool {
-	if newObstacleLocation == m.startingPos || m.visitedLocations[newObstacleLocation] {
+	if m.visitedLocations[newObstacleLocation] {
 		return false
 	}
 
+	// It'd be cleaner to copy these slices so I don't mutate them in the actual map
+	// But resetting the obstacle to false down below is a bit easier.
 	m.obstacles[newObstacleLocation.x][newObstacleLocation.y] = true
 
-	for m.guardPos.x < m.width && m.guardPos.y < m.height {
+	for m.isCoordOnMap(m.guardPos) {
+		if slices.Contains(m.turns, turnPos{
+			coord: m.guardPos,
+			dir:   m.guardDir,
+		}) {
+			m.obstacles[newObstacleLocation.x][newObstacleLocation.y] = false
+			return true
+		}
 		m.moveGuard()
 	}
 
+	m.obstacles[newObstacleLocation.x][newObstacleLocation.y] = false
 	return false
 }
 
 func solveFirstPuzzle(filepath string) int {
-	guardMap := newGuardMap(filepath)
-	for guardMap.guardPos.x < guardMap.width && guardMap.guardPos.y < guardMap.height {
-		guardMap.moveGuard()
+	m := newGuardMap(filepath)
+	for m.isCoordOnMap(m.guardPos) {
+		m.moveGuard()
+		m.visitedLocations[m.guardPos] = true
 	}
 
 	// The final position will be off by one since the final off-the-map position is logged.ƒ
-	return len(guardMap.visitedLocations) - 1
+	return len(m.visitedLocations) - 1
 }
 
 func solveSecondPuzzle(filepath string) int {
-	guardMap := newGuardMap(filepath)
+	m := newGuardMap(filepath)
 
-	for guardMap.guardPos.x < guardMap.width && guardMap.guardPos.y < guardMap.height {
-		guardMap.moveGuard()
+	var loopLocationCount int
+	for m.isCoordOnMap(m.guardPos) {
+		nextPos := m.getNextGuardPos()
+
+		if m.isCoordOnMap(nextPos) &&
+			!m.obstacles[nextPos.x][nextPos.y] &&
+			m.willNewObstacleLoopGuard(nextPos) {
+
+			loopLocationCount++
+		}
+
+		m.moveGuard()
+		m.visitedLocations[m.guardPos] = true
 	}
-
-	return 0
+	return loopLocationCount
 }
